@@ -1,22 +1,22 @@
 # Author: echel0n <echel0n@sickrage.ca>
 # URL: https://sickrage.ca
 #
-# This file is part of SickRage.
+# This file is part of SiCKRAGE.
 #
-# SickRage is free software: you can redistribute it and/or modify
+# SiCKRAGE is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 #
-# SickRage is distributed in the hope that it will be useful,
+# SiCKRAGE is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with SickRage.  If not, see <http://www.gnu.org/licenses/>.
+# along with SiCKRAGE.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import unicode_literals
+
 
 import threading
 import time
@@ -50,26 +50,26 @@ class SearchQueue(srQueue):
         srQueue.__init__(self, "SEARCHQUEUE")
 
     def is_in_queue(self, show, segment):
-        for __, __, cur_item in self.queue:
+        for cur_item in self.queue:
             if isinstance(cur_item, BacklogQueueItem) and cur_item.show == show and cur_item.segment == segment:
                 return True
         return False
 
     def is_ep_in_queue(self, segment):
-        for __, __, cur_item in self.queue:
+        for cur_item in self.queue:
             if isinstance(cur_item, (ManualSearchQueueItem, FailedQueueItem)) and cur_item.segment == segment:
                 return True
         return False
 
     def is_show_in_queue(self, show):
-        for __, __, cur_item in self.queue:
+        for cur_item in self.queue:
             if isinstance(cur_item, (ManualSearchQueueItem, FailedQueueItem)) and cur_item.show.indexerid == show:
                 return True
         return False
 
     def get_all_ep_from_queue(self, show):
         ep_obj_list = []
-        for __, __, cur_item in self.queue:
+        for cur_item in self.queue:
             if isinstance(cur_item, (ManualSearchQueueItem, FailedQueueItem)) and str(cur_item.show.indexerid) == show:
                 ep_obj_list.append(cur_item)
         return ep_obj_list
@@ -100,14 +100,14 @@ class SearchQueue(srQueue):
         return False
 
     def is_backlog_in_progress(self):
-        for __, __, cur_item in self.queue + [(None, None, self.current_item)]:
+        for cur_item in self.queue + [self.current_item]:
             if isinstance(cur_item, BacklogQueueItem):
                 return True
 
         return False
 
     def is_dailysearch_in_progress(self):
-        for __, __, cur_item in self.queue + [(None, None, self.current_item)]:
+        for cur_item in self.queue + [self.current_item]:
             if isinstance(cur_item, DailySearchQueueItem):
                 return True
 
@@ -115,7 +115,7 @@ class SearchQueue(srQueue):
 
     def queue_length(self):
         length = {'backlog': 0, 'daily': 0, 'manual': 0, 'failed': 0}
-        for __, __, cur_item in self.queue + [(None, None, self.current_item)]:
+        for cur_item in self.queue + [self.current_item]:
             if isinstance(cur_item, DailySearchQueueItem):
                 length['daily'] += 1
             elif isinstance(cur_item, BacklogQueueItem):
@@ -215,7 +215,6 @@ class ManualSearchQueueItem(srQueueItem):
                 )
 
                 sickrage.app.log.info("Unable to find a download for: [" + self.segment.pretty_name() + "]")
-
         except Exception:
             sickrage.app.log.debug(traceback.format_exc())
         finally:

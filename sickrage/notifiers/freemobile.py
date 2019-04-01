@@ -3,26 +3,24 @@
 # Author: Aaron Bieber <deftly@gmail.com>
 # URL: https://sickrage.ca
 #
-# This file is part of SickRage.
+# This file is part of SiCKRAGE.
 #
-# SickRage is free software: you can redistribute it and/or modify
+# SiCKRAGE is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 #
-# SickRage is distributed in the hope that it will be useful,
+# SiCKRAGE is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with SickRage.  If not, see <http://www.gnu.org/licenses/>.
-
-from __future__ import unicode_literals
-
-import urllib2
+# along with SiCKRAGE.  If not, see <http://www.gnu.org/licenses/>.
+from urllib import parse
 
 import sickrage
+from sickrage.core.websession import WebSession
 from sickrage.notifiers import Notifiers
 
 
@@ -47,6 +45,7 @@ class FreeMobileNotifier(Notifiers):
 
         if id is None:
             id = sickrage.app.config.freemobile_id
+
         if apiKey is None:
             apiKey = sickrage.app.config.freemobile_apikey
 
@@ -54,32 +53,32 @@ class FreeMobileNotifier(Notifiers):
 
         # build up the URL and parameters
         msg = msg.strip()
-        msg_quoted = urllib2.quote(title.encode('utf-8') + ": " + msg.encode('utf-8'))
+        msg_quoted = parse.quote(title.encode('utf-8') + ": " + msg.encode('utf-8'))
         URL = "https://smsapi.free-mobile.fr/sendmsg?user=" + id + "&pass=" + apiKey + "&msg=" + msg_quoted
 
-        req = urllib2.Request(URL)
+        resp = WebSession().get(URL
+                                )
         # send the request to Free Mobile
         try:
-            urllib2.urlopen(req)
-        except IOError as e:
-            if hasattr(e, 'code'):
-                if e.code == 400:
-                    message = "Missing parameter(s)."
-                    sickrage.app.log.error(message)
-                    return False, message
-                if e.code == 402:
-                    message = "Too much SMS sent in a short time."
-                    sickrage.app.log.error(message)
-                    return False, message
-                if e.code == 403:
-                    message = "API service isn't enabled in your account or ID / API key is incorrect."
-                    sickrage.app.log.error(message)
-                    return False, message
-                if e.code == 500:
-                    message = "Server error. Please retry in few moment."
-                    sickrage.app.log.error(message)
-                    return False, message
+            resp.raise_for_status()
         except Exception as e:
+            if resp.status_code == 400:
+                message = "Missing parameter(s)."
+                sickrage.app.log.error(message)
+                return False, message
+            if resp.status_code == 402:
+                message = "Too much SMS sent in a short time."
+                sickrage.app.log.error(message)
+                return False, message
+            if resp.status_code == 403:
+                message = "API service isn't enabled in your account or ID / API key is incorrect."
+                sickrage.app.log.error(message)
+                return False, message
+            if resp.status_code == 500:
+                message = "Server error. Please retry in few moment."
+                sickrage.app.log.error(message)
+                return False, message
+
             message = "Error while sending SMS: {}".format(e)
             sickrage.app.log.error(message)
             return False, message

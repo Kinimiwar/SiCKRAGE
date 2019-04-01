@@ -598,7 +598,7 @@
                                     ${_('Use System Default')}
                                 </option>
                                 % for cur_preset in date_presets:
-                                    <option value="${cur_preset}" ${('', 'selected')[sickrage.app.config.date_preset == cur_preset]}>${datetime.datetime(datetime.datetime.now().year, 12, 31, 14, 30, 47).strftime(cur_preset).decode(sickrage.app.sys_encoding)}</option>
+                                    <option value="${cur_preset}" ${('', 'selected')[sickrage.app.config.date_preset == cur_preset]}>${datetime.datetime(datetime.datetime.now().year, 12, 31, 14, 30, 47).strftime(cur_preset)}</option>
                                 % endfor
                             </select>
                         </div>
@@ -1045,21 +1045,6 @@
                         </label>
                     </div>
 
-
-                </div>
-
-                <div class="form-row form-group">
-
-                    <div class="col-lg-3 col-md-4 col-sm-5">
-                        <label class="component-title">${_('Encrypt settings')}</label>
-                    </div>
-                    <div class="col-lg-9 col-md-8 col-sm-7 component-desc">
-                        <label for="encryption_version">
-                            <input type="checkbox" class="toggle color-primary is-material" name="encryption_version"
-                                   id="encryption_version" ${('', 'checked')[bool(sickrage.app.config.encryption_version)]}/>
-                            ${_('in the')} <code>${sickrage.app.config_file}</code> ${_('file.')}
-                        </label>
-                    </div>
 
                 </div>
 

@@ -1,28 +1,27 @@
 # Author: echel0n <echel0n@sickrage.ca>
 # URL: https://sickrage.ca
 #
-# This file is part of SickRage.
+# This file is part of SiCKRAGE.
 #
-# SickRage is free software: you can redistribute it and/or modify
+# SiCKRAGE is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 #
-# SickRage is distributed in the hope that it will be useful,
+# SiCKRAGE is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with SickRage.  If not, see <http://www.gnu.org/licenses/>.
+# along with SiCKRAGE.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import unicode_literals
 
 import base64
 import ctypes
 import datetime
 import errno
-import io
+import glob
 import os
 import platform
 import random
@@ -31,25 +30,26 @@ import shutil
 import socket
 import stat
 import string
-import sys
 import tempfile
 import time
 import traceback
-import urlparse
+import unicodedata
 import uuid
 import webbrowser
 import zipfile
 from collections import OrderedDict
 from contextlib import contextmanager
+from urllib.parse import uses_netloc, urlsplit, urlunsplit, urljoin
 
 import rarfile
 import requests
-import six
 from bs4 import BeautifulSoup
 
 import sickrage
 from sickrage.core.common import Quality, SKIPPED, WANTED, FAILED, UNAIRED
+from sickrage.core.databases.main import MainDB
 from sickrage.core.exceptions import MultipleShowObjectsException
+from sickrage.core.helpers import encryption
 
 
 def safe_getattr(object, name, default=None):
@@ -68,7 +68,7 @@ def try_int(value, default=0):
 
 def readFileBuffered(filename, reverse=False):
     blocksize = (1 << 15)
-    with io.open(filename, 'r', encoding='utf-8') as fh:
+    with open(filename, 'r', encoding='utf-8') as fh:
         if reverse:
             fh.seek(0, os.SEEK_END)
         pos = fh.tell()
@@ -94,7 +94,7 @@ def argToBool(x):
     convert argument of unknown type to a bool:
     """
 
-    if isinstance(x, six.string_types):
+    if isinstance(x, str):
         if x.lower() in ("0", "false", "f", "no", "n", "off"):
             return False
         elif x.lower() in ("1", "true", "t", "yes", "y", "on"):
@@ -226,7 +226,7 @@ def remove_non_release_groups(name):
     ])
 
     _name = name
-    for remove_string, remove_type in six.iteritems(removeWordsList):
+    for remove_string, remove_type in removeWordsList.items():
         if remove_type == 'search':
             _name = _name.replace(remove_string, '')
         elif remove_type == 'searchre':
@@ -262,7 +262,7 @@ def is_torrent_or_nzb_file(filename):
     :return: ``True`` if the ``filename`` is a NZB file or a torrent file, ``False`` otherwise
     """
 
-    if not isinstance(filename, six.string_types):
+    if not isinstance(filename, str):
         return False
 
     return filename.rpartition('.')[2].lower() in ['nzb', 'torrent']
@@ -345,7 +345,7 @@ def sanitizeFileName(name):
     """
 
     # remove bad chars from the filename
-    name = re.sub(r'[\\/\*]', '-', name)
+    name = re.sub(r'[\\/*]', '-', name)
     name = re.sub(r'[:"<>|?]', '', name)
     name = re.sub(r'\u2122', '', name)  # Trade Mark Sign
 
@@ -372,7 +372,6 @@ def findCertainShow(indexerid, return_show_object=True):
     Find a show by indexer ID in the show list
 
     :param return_show_object: returns a show object if True
-    :param showList: List of shows to search in (needle)
     :param indexerid: Show to look for
     :return: result list
     """
@@ -671,7 +670,7 @@ def chmod_as_parent(child_path):
 
     (Does not work for Windows hosts)
 
-    :param childPath: Child Path to change permissions to sync from parent
+    :param child_path: Child Path to change permissions to sync from parent
     """
 
     if os.name == 'nt' or os.name == 'ce':
@@ -809,7 +808,7 @@ def create_https_certificates(ssl_cert, ssl_key):
         careq = OpenSSL.crypto.X509()
         careq.get_subject().CN = "Certificate Authority"
         careq.set_pubkey(cakey)
-        careq.sign(cakey, "sha1")
+        careq.sign(cakey, b"sha1")
 
         # Sign the CA Certificate
         cacert = OpenSSL.crypto.X509()
@@ -819,7 +818,7 @@ def create_https_certificates(ssl_cert, ssl_key):
         cacert.set_issuer(careq.get_subject())
         cacert.set_subject(careq.get_subject())
         cacert.set_pubkey(careq.get_pubkey())
-        cacert.sign(cakey, "sha1")
+        cacert.sign(cakey, b"sha1")
 
         # Generate self-signed certificate
         key = OpenSSL.crypto.PKey()
@@ -831,15 +830,15 @@ def create_https_certificates(ssl_cert, ssl_key):
         cert.set_serial_number(serial)
         cert.set_issuer(cacert.get_subject())
         cert.set_pubkey(key)
-        cert.sign(cakey, "sha1")
+        cert.sign(cakey, b"sha1")
 
         # Save the key and certificate to disk
         try:
             # pylint: disable=E1101
             # Module has no member
-            with io.open(ssl_key, 'w') as keyout:
+            with open(ssl_key, 'wb') as keyout:
                 keyout.write(OpenSSL.crypto.dump_privatekey(OpenSSL.crypto.FILETYPE_PEM, key))
-            with io.open(ssl_cert, 'w') as certout:
+            with open(ssl_cert, 'wb') as certout:
                 certout.write(OpenSSL.crypto.dump_certificate(OpenSSL.crypto.FILETYPE_PEM, cert))
         except Exception:
             sickrage.app.log.warning("Error creating SSL key and certificate")
@@ -860,10 +859,10 @@ def anon_url(*url):
     Return a URL string consisting of the Anonymous redirect URL and an arbitrary number of values appended.
     """
 
-    url = ''.join(map(unicode, url))
+    url = ''.join(map(str, url))
 
     # Handle URL's containing https or http, previously only handled http
-    uri_pattern = ur'^https?://'
+    uri_pattern = '^https?://'
     unicode_uri_pattern = re.compile(uri_pattern, re.UNICODE)
     if not re.search(unicode_uri_pattern, url):
         url = 'http://' + url
@@ -929,7 +928,7 @@ def extract_zipfile(archive, targetDir):
 
             # copy file (taken from zipfile's extract)
             source = zip_file.open(member)
-            target = io.open(os.path.join(targetDir, filename), "wb")
+            target = open(os.path.join(targetDir, filename), "wb")
             shutil.copyfileobj(source, target)
             source.close()
             target.close()
@@ -985,7 +984,7 @@ def restoreConfigZip(archive, targetDir, restore_database=True, restore_config=T
 
         with zipfile.ZipFile(archive, 'r', allowZip64=True) as zip_file:
             for member in zip_file.namelist():
-                if not restore_database and member.split('/')[0] in ['database', 'main_db.pickle', 'cache_db.pickle']:
+                if not restore_database and member.split('/')[0] in ['main.db', 'cache.db']:
                     continue
 
                 if not restore_config and member.split('/')[0] == 'config.ini':
@@ -1005,14 +1004,11 @@ def restoreConfigZip(archive, targetDir, restore_database=True, restore_config=T
 def backupSR(backupDir, keep_latest=False):
     source = []
 
-    file_list = [os.path.basename(sickrage.app.config_file)]
-    file_list += ['sickrage.db', 'failed.db', 'cache.db']
+    files_list = ['main.db', 'cache.db', os.path.basename(sickrage.app.config_file)]
 
     def _keep_latest_backup():
-        import glob
-
-        for f in sorted(glob.glob(os.path.join(backupDir, '*.zip')), key=os.path.getctime, reverse=True)[1:]:
-            os.remove(f)
+        for x in sorted(glob.glob(os.path.join(backupDir, '*.zip')), key=os.path.getctime, reverse=True)[1:]:
+            os.remove(x)
 
     if not os.path.exists(backupDir):
         os.mkdir(backupDir)
@@ -1021,15 +1017,10 @@ def backupSR(backupDir, keep_latest=False):
         _keep_latest_backup()
 
     # individual files
-    for f in file_list:
+    for f in files_list:
         fp = os.path.join(sickrage.app.data_dir, f)
         if os.path.exists(fp):
             source += [fp]
-
-    # database
-    for db in [sickrage.app.main_db, sickrage.app.cache_db]:
-        backup_file = db.backup(os.path.join(sickrage.app.data_dir, '{}.codernitydb'.format(db.name)))
-        source += [backup_file]
 
     # cache folder
     if sickrage.app.cache_dir:
@@ -1049,10 +1040,10 @@ def backupSR(backupDir, keep_latest=False):
 
 def restoreSR(srcDir, dstDir):
     try:
-        files_list = ['sickrage.db',
-                      'sickbeard.db',
-                      'failed.db',
+        files_list = ['main.db',
                       'cache.db',
+                      'main.db.codernitydb',
+                      'cache.db.codernitydb',
                       os.path.basename(sickrage.app.config_file)]
 
         for filename in files_list:
@@ -1065,12 +1056,6 @@ def restoreSR(srcDir, dstDir):
                 if os.path.isfile(dstFile):
                     move_file(dstFile, bakFile)
                 move_file(srcFile, dstFile)
-
-        # database
-        for db in [sickrage.app.main_db, sickrage.app.cache_db]:
-            restore_file = os.path.join(sickrage.app.data_dir, 'restore', '{}.codernitydb'.format(db.name))
-            if os.path.exists(restore_file):
-                db.restore(restore_file)
 
         # cache
         if os.path.exists(os.path.join(srcDir, 'cache')):
@@ -1133,14 +1118,11 @@ def get_size(start_path='.'):
 def generateApiKey():
     """ Return a new randomized API_KEY"""
 
-    try:
-        from hashlib import md5
-    except ImportError:
-        from md5 import md5
+    from hashlib import md5
 
     # Create some values to seed md5
-    t = str(time.time())
-    r = str(random.random())
+    t = str(time.time()).encode('utf-8')
+    r = str(random.random()).encode('utf-8')
 
     # Create the md5 instance and give it the current time
     m = md5(t)
@@ -1186,9 +1168,9 @@ def remove_article(text=''):
 
 
 def generate_secret():
-    """Generate a new cookie secret"""
+    """Generate a new secret"""
 
-    return base64.b64encode(uuid.uuid4().bytes + uuid.uuid4().bytes)
+    return base64.b64encode(uuid.uuid4().bytes + uuid.uuid4().bytes).decode()
 
 
 def verify_freespace(src, dest, oldfile=None):
@@ -1213,14 +1195,10 @@ def verify_freespace(src, dest, oldfile=None):
             return free
 
     elif os.name == 'nt':  # Windows
-        import sys
 
         def disk_usage(path):
             __, total, free = ctypes.c_ulonglong(), ctypes.c_ulonglong(), ctypes.c_ulonglong()
-            if sys.version_info >= (3,) or isinstance(path, unicode):
-                fun = ctypes.windll.kernel32.GetDiskFreeSpaceExW
-            else:
-                fun = ctypes.windll.kernel32.GetDiskFreeSpaceExA
+            fun = ctypes.windll.kernel32.GetDiskFreeSpaceExW
             ret = fun(path, ctypes.byref(__), ctypes.byref(total), ctypes.byref(free))
             if ret == 0:
                 sickrage.app.log.warning("Unable to determine free space, something went wrong")
@@ -1294,7 +1272,7 @@ def isFileLocked(checkfile, writeLockCheck=False):
     if not os.path.exists(checkfile):
         return True
     try:
-        with io.open(checkfile, 'rb'):
+        with open(checkfile, 'rb'):
             pass
     except IOError:
         return True
@@ -1344,12 +1322,7 @@ def getFreeSpace(directories):
         if os.path.isdir(folder):
             if os.name == 'nt':
                 __, total, free = ctypes.c_ulonglong(), ctypes.c_ulonglong(), ctypes.c_ulonglong()
-
-                if sys.version_info >= (3,) or isinstance(folder, unicode):
-                    fun = ctypes.windll.kernel32.GetDiskFreeSpaceExW
-                else:
-                    fun = ctypes.windll.kernel32.GetDiskFreeSpaceExA
-
+                fun = ctypes.windll.kernel32.GetDiskFreeSpaceExW
                 ret = fun(folder, ctypes.byref(__), ctypes.byref(total), ctypes.byref(free))
                 if ret == 0: raise ctypes.WinError()
 
@@ -1417,7 +1390,7 @@ def restoreVersionedFile(backup_file, version):
     return True
 
 
-def backupVersionedFile(old_file, version):
+def backup_versioned_file(old_file, version):
     """
     Back up an old version of a file
 
@@ -1438,6 +1411,7 @@ def backupVersionedFile(old_file, version):
         try:
             sickrage.app.log.debug("Trying to back up %s to %s" % (old_file, new_file))
             shutil.copyfile(old_file, new_file)
+            encryption.encrypt_file(new_file, sickrage.app.private_key.public_key())
             sickrage.app.log.debug("Backup done")
             break
         except Exception as e:
@@ -1494,11 +1468,11 @@ def get_temp_dir():
 
 def scrub(obj):
     if isinstance(obj, dict):
-        for k in obj.keys():
+        for k in obj.copy().keys():
             scrub(obj[k])
             del obj[k]
     elif isinstance(obj, list):
-        for i in reversed(range(len(obj))):
+        for i in reversed(range(len(obj.copy()))):
             scrub(obj[i])
             del obj[i]
 
@@ -1516,11 +1490,11 @@ def convert_size(size, default=0, units=None):
 
     size *= 1024 ** units.index(unit.upper())
 
-    return max(long(size), 0)
+    return max(int(size), 0)
 
 
 def randomString(size=8, chars=string.ascii_uppercase + string.digits):
-    return ''.join(random.choice(chars) for x in xrange(size))
+    return ''.join(random.choice(chars) for __ in range(size))
 
 
 def clean_url(url):
@@ -1529,7 +1503,7 @@ def clean_url(url):
     or an empty string
     """
 
-    urlparse.uses_netloc.append('scgi')
+    uses_netloc.append('scgi')
 
     if url and url.strip():
 
@@ -1538,12 +1512,12 @@ def clean_url(url):
         if '://' not in url:
             url = '//' + url
 
-        scheme, netloc, path, query, fragment = urlparse.urlsplit(url, 'http')
+        scheme, netloc, path, query, fragment = urlsplit(url, 'http')
 
         if not path:
             path += '/'
 
-        cleaned_url = urlparse.urlunsplit((scheme, netloc, path, query, fragment))
+        cleaned_url = urlunsplit((scheme, netloc, path, query, fragment))
 
     else:
         cleaned_url = ''
@@ -1579,20 +1553,21 @@ def app_statistics():
         if sickrage.app.show_queue.is_being_added(show) or sickrage.app.show_queue.is_being_removed(show):
             continue
 
-        for epData in sickrage.app.main_db.get_many('tv_episodes', show.indexerid):
+        for epData in MainDB.TVEpisode.query(showid=show.indexerid):
             if show.indexerid not in show_stat:
                 show_stat[show.indexerid] = {}
                 show_stat[show.indexerid]['ep_snatched'] = 0
                 show_stat[show.indexerid]['ep_downloaded'] = 0
                 show_stat[show.indexerid]['ep_total'] = 0
-                show_stat[show.indexerid]['ep_airs_next'] = None
-                show_stat[show.indexerid]['ep_airs_prev'] = None
+                show_stat[show.indexerid]['ep_airs_next'] = 0
+                show_stat[show.indexerid]['ep_airs_prev'] = 0
                 show_stat[show.indexerid]['total_size'] = 0
 
-            season = epData['season']
-            episode = epData['episode']
-            airdate = epData['airdate']
-            status = epData['status']
+            season = epData.season
+            episode = epData.episode
+            airdate = epData.airdate
+            status = epData.status
+            file_size = epData.file_size
 
             if season > 0 and episode > 0 and airdate > 1:
                 if status in status_quality:
@@ -1615,10 +1590,10 @@ def app_statistics():
                 elif airdate < today > show_stat[show.indexerid]['ep_airs_prev'] and status != UNAIRED:
                     show_stat[show.indexerid]['ep_airs_prev'] = airdate
 
-                show_stat[show.indexerid]['total_size'] += epData['file_size']
+                show_stat[show.indexerid]['total_size'] += file_size
 
                 overall_stats['episodes']['total'] += 1
-                overall_stats['total_size'] += epData['file_size']
+                overall_stats['total_size'] += file_size
 
     max_download_count *= 100
 
@@ -1685,8 +1660,8 @@ def torrent_webui_url(reset=False):
     if sickrage.app.config.torrent_method == 'utorrent':
         torrent_ui_url = '/'.join(s.strip('/') for s in (torrent_ui_url, 'gui/'))
     elif sickrage.app.config.torrent_method == 'download_station':
-        if test_exists(urlparse.urljoin(torrent_ui_url, 'download/')):
-            torrent_ui_url = urlparse.urljoin(torrent_ui_url, 'download/')
+        if test_exists(urljoin(torrent_ui_url, 'download/')):
+            torrent_ui_url = urljoin(torrent_ui_url, 'download/')
 
     sickrage.app.client_web_urls['torrent'] = ('', torrent_ui_url)[test_exists(torrent_ui_url)]
 
@@ -1701,8 +1676,8 @@ def checkbox_to_value(option, value_on=True, value_off=False):
 
     if isinstance(option, list):
         option = option[-1]
-    if isinstance(option, six.string_types):
-        option = six.text_type(option).strip().lower()
+    if isinstance(option, str):
+        option = str(option).strip().lower()
 
     if option in (True, 'on', 'true', value_on) or try_int(option) > 0:
         return value_on
@@ -1773,13 +1748,9 @@ def glob_escape(pathname):
     """
 
     MAGIC_CHECK = re.compile(r'([*?[])')
-    MAGIC_CHECK_BYTES = re.compile(r'([*?[])')
 
     drive, pathname = os.path.splitdrive(pathname)
-    if isinstance(pathname, bytes):
-        pathname = MAGIC_CHECK_BYTES.sub(r'[\1]', pathname)
-    else:
-        pathname = MAGIC_CHECK.sub(r'[\1]', pathname)
+    pathname = MAGIC_CHECK.sub(r'[\1]', pathname)
 
     return drive + pathname
 
@@ -1791,11 +1762,8 @@ def memory_usage():
             p = psutil.Process(sickrage.app.pid)
             return pretty_filesize(int(p.memory_info().rss))
         except ImportError:
-            try:
-                import resource
-                return pretty_filesize(int(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss) * 1024)
-            except ImportError:
-                pass
+            import resource
+            return pretty_filesize(int(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss) * 1024)
     except Exception:
         pass
 
@@ -1868,4 +1836,16 @@ def episode_num(season=None, episode=None, **kwargs):
 
 
 def touch_file(file):
-    io.open(file, 'a').close()
+    open(file, 'a').close()
+
+
+def strip_accents(name):
+    try:
+        name = unicodedata.normalize('NFKD', name).encode('ASCII', 'ignore')
+    except UnicodeDecodeError:
+        pass
+
+    if isinstance(name, bytes):
+        name = name.decode()
+
+    return name

@@ -2,9 +2,9 @@
 # URL: https://sickrage.ca/
 # Git: https://git.sickrage.ca/SiCKRAGE/sickrage.git
 #
-# This file is part of SickRage.
+# This file is part of SiCKRAGE.
 #
-# SickRage is free software: you can redistribute it and/or modify
+# SiCKRAGE is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
@@ -15,11 +15,12 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with SickRage.  If not, see <http://www.gnu.org/licenses/>.
+# along with SiCKRAGE.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import unicode_literals
+
 
 import sickrage
+from sickrage.core.databases.main import MainDB
 
 
 class BlackAndWhiteList(object):
@@ -37,8 +38,8 @@ class BlackAndWhiteList(object):
         Builds black and whitelist
         """
         sickrage.app.log.debug('Building black and white list for ' + str(self.show_id))
-        self.blacklist = self._load_list('blacklist')
-        self.whitelist = self._load_list('whitelist')
+        self.blacklist = self._load_list(MainDB.Blacklist.query(show_id=self.show_id))
+        self.whitelist = self._load_list(MainDB.Whitelist.query(show_id=self.show_id))
 
     def _add_keywords(self, table, values):
         """
@@ -48,10 +49,9 @@ class BlackAndWhiteList(object):
         :param values: Values to be inserted in table
         """
         for value in values:
-            sickrage.app.main_db.insert({
-                '_t': table,
+            table.add(**{
                 'show_id': self.show_id,
-                'keywork': value
+                'keyword': value
             })
 
     def set_black_keywords(self, values):
@@ -60,8 +60,8 @@ class BlackAndWhiteList(object):
 
         :param values: Complete list of keywords to be set as blacklist
         """
-        self._del_all_keywords('blacklist')
-        self._add_keywords('blacklist', values)
+        self._del_all_keywords(MainDB.Blacklist.query(show_id=self.show_id))
+        self._add_keywords(MainDB.Blacklist, values)
         self.blacklist = values
         sickrage.app.log.debug('Blacklist set to: %s' % self.blacklist)
 
@@ -71,8 +71,8 @@ class BlackAndWhiteList(object):
 
         :param values: Complete list of keywords to be set as whitelist
         """
-        self._del_all_keywords('whitelist')
-        self._add_keywords('whitelist', values)
+        self._del_all_keywords(MainDB.Whitelist.query(show_id=self.show_id))
+        self._add_keywords(MainDB.Whitelist, values)
         self.whitelist = values
         sickrage.app.log.debug('Whitelist set to: %s' % self.whitelist)
 
@@ -82,9 +82,7 @@ class BlackAndWhiteList(object):
 
         :param table: database table remove keywords from
         """
-        dbData = sickrage.app.main_db.get(table, self.show_id)
-        if dbData:
-            sickrage.app.main_db.delete(sickrage.app.main_db.get(table, self.show_id))
+        [table.delete(x) for x in table]
 
     def _load_list(self, table):
         """
@@ -95,7 +93,7 @@ class BlackAndWhiteList(object):
         :return: keywords in list
         """
         try:
-            groups = [x['keyword'] for x in sickrage.app.main_db.get_many(table, self.show_id)]
+            groups = [x.keyword for x in table]
         except KeyError:
             groups = []
 

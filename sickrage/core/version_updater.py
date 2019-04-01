@@ -1,22 +1,21 @@
 # Author: echel0n <echel0n@sickrage.ca>
 # URL: https://sickrage.ca
 #
-# This file is part of SickRage.
+# This file is part of SiCKRAGE.
 #
-# SickRage is free software: you can redistribute it and/or modify
+# SiCKRAGE is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 #
-# SickRage is distributed in the hope that it will be useful,
+# SiCKRAGE is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with SickRage.  If not, see <http://www.gnu.org/licenses/>.
+# along with SiCKRAGE.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import unicode_literals
 
 import os
 import platform
@@ -68,6 +67,7 @@ class VersionUpdater(object):
                         sickrage.app.log.info("Update was successful!")
                         sickrage.app.alerts.message(_('Updater'),
                                                     _('Update was successful'))
+                        sickrage.app.shutdown(restart=True)
                     else:
                         sickrage.app.log.info("Update failed!")
                         sickrage.app.alerts.error(_('Updater'),
@@ -153,10 +153,6 @@ class VersionUpdater(object):
         if not self.updater or (not sickrage.app.config.version_notify or sickrage.app.developer) and not force:
             return False
 
-        if self.updater.is_migration_ready(self.updater.current_branch):
-            self.updater.set_migration_text()
-            return False
-
         if self.updater.need_update():
             if not sickrage.app.config.auto_update or force:
                 self.updater.set_newest_text()
@@ -168,12 +164,12 @@ class VersionUpdater(object):
             if not self.safe_to_update():
                 return False
 
-            # check for updates
-            if not self.updater.need_update():
-                return False
-
             # backup
             if not self.backup():
+                return False
+
+            # check for updates
+            if not self.updater.need_update():
                 return False
 
             # attempt update
@@ -184,6 +180,8 @@ class VersionUpdater(object):
                 for root, dirs, files in os.walk(to_clean, topdown=False):
                     [os.remove(os.path.join(root, name)) for name in files]
                     [shutil.rmtree(os.path.join(root, name)) for name in dirs]
+
+                sickrage.app.config.view_changelog = True
 
                 if webui:
                     WebSocketMessage('task', {'cmd': 'restart'}).push()
@@ -249,6 +247,44 @@ class UpdateManager(object):
 
         sickrage.app.alerts.error(_('Updater'), error_message)
 
+    @property
+    def _pip_path(self):
+        test_cmd = '-V'
+
+        main_pip = sickrage.app.config.pip_path or 'pip3'
+
+        # sickrage.app.log.debug("Checking if we can use pip commands: " + main_pip + ' ' + test_cmd)
+        __, __, exit_status = self._pip_cmd(main_pip, test_cmd, silent=True)
+        if exit_status == 0:
+            # sickrage.app.log.debug("Using: " + main_pip)
+            return main_pip
+
+        # trying alternatives
+        alternative_pip = []
+
+        # osx people who start sr from launchd have a broken path, so try a hail-mary attempt for them
+        if platform.system().lower() == 'darwin':
+            alternative_pip.append('/usr/local/python3.7/bin/pip3')
+
+        if platform.system().lower() == 'windows':
+            if main_pip != main_pip.lower():
+                alternative_pip.append(main_pip.lower())
+
+        if alternative_pip:
+            sickrage.app.log.debug("Trying known alternative pip locations")
+
+            for cur_pip in alternative_pip:
+                # sickrage.app.log.debug("Checking if we can use pip commands: " + cur_pip + ' ' + test_cmd)
+                __, __, exit_status = self._pip_cmd(cur_pip, test_cmd)
+                if exit_status == 0:
+                    # sickrage.app.log.debug("Using: " + cur_pip)
+                    return cur_pip
+
+        # Still haven't found a working git
+        error_message = _('Unable to find your pip executable - Set your pip path from Settings->General->Advanced')
+
+        sickrage.app.alerts.error(_('Updater'), error_message)
+
     @staticmethod
     def _git_cmd(git_path, args, silent=False):
         output = err = None
@@ -270,7 +306,7 @@ class UpdateManager(object):
             exit_status = p.returncode
 
             if output:
-                output = output.strip()
+                output = output.decode().strip()
 
         except OSError:
             sickrage.app.log.info("Command " + ' '.join(cmd) + " didn't work")
@@ -299,54 +335,16 @@ class UpdateManager(object):
 
         return output, err, exit_status
 
-    @property
-    def _pip2_path(self):
-        test_cmd = '-V'
-
-        main_pip = sickrage.app.config.pip2_path or 'pip2'
-
-        # sickrage.app.log.debug("Checking if we can use pip commands: " + main_pip + ' ' + test_cmd)
-        __, __, exit_status = self._pip2_cmd(main_pip, test_cmd, silent=True)
-        if exit_status == 0:
-            # sickrage.app.log.debug("Using: " + main_pip)
-            return main_pip
-
-        # trying alternatives
-        alternative_pip = []
-
-        # osx people who start sr from launchd have a broken path, so try a hail-mary attempt for them
-        if platform.system().lower() == 'darwin':
-            alternative_pip.append('/usr/local/python2.7/bin/pip2')
-
-        if platform.system().lower() == 'windows':
-            if main_pip != main_pip.lower():
-                alternative_pip.append(main_pip.lower())
-
-        if alternative_pip:
-            sickrage.app.log.debug("Trying known alternative pip locations")
-
-            for cur_pip in alternative_pip:
-                # sickrage.app.log.debug("Checking if we can use pip commands: " + cur_pip + ' ' + test_cmd)
-                __, __, exit_status = self._pip2_cmd(cur_pip, test_cmd)
-                if exit_status == 0:
-                    # sickrage.app.log.debug("Using: " + cur_pip)
-                    return cur_pip
-
-        # Still haven't found a working git
-        error_message = _('Unable to find your pip2 executable - Set your pip2 path from Settings->General->Advanced')
-
-        sickrage.app.alerts.error(_('Updater'), error_message)
-
     @staticmethod
-    def _pip2_cmd(pip2_path, args, silent=False):
+    def _pip_cmd(pip_path, args, silent=False):
         output = err = None
 
-        if not pip2_path:
+        if not pip_path:
             sickrage.app.log.warning("No path to pip specified, can't use pip commands")
             exit_status = 1
             return output, err, exit_status
 
-        cmd = [pip2_path] + args.split()
+        cmd = [pip_path] + args.split()
 
         try:
             if not silent:
@@ -388,11 +386,11 @@ class UpdateManager(object):
             os.unlink(requirements_file.name)
             return False
 
-        output, __, exit_status = self._pip2_cmd(self._pip2_path,
+        output, __, exit_status = self._pip_cmd(self._pip_path,
                                                 'install --no-cache-dir -r {}'.format(requirements_file.name))
 
         if exit_status != 0:
-            __, __, exit_status = self._pip2_cmd(self._pip2_path,
+            __, __, exit_status = self._pip_cmd(self._pip_path,
                                                 'install --no-cache-dir --user -r {}'.format(requirements_file.name))
 
         if exit_status == 0:
@@ -403,29 +401,15 @@ class UpdateManager(object):
         sickrage.app.alerts.error(_('Updater'),
                                   _('Failed to update requirements'))
 
-        sickrage.app.log.warning('Unable to update requirements using {req_file}'.format(**{
-            'req_file': sickrage.REQS_FILE
-        }))
+        sickrage.app.log.warning('Unable to update requirements')
 
         if output:
             sickrage.app.log.debug("PIP CMD OUTPUT: {}".format(output.strip()))
 
         requirements_file.close()
         os.unlink(requirements_file.name)
+
         return False
-
-    def is_migration_ready(self, branch):
-        try:
-            r = WebSession().get("https://git.sickrage.ca/SiCKRAGE/sickrage/raw/{}/SiCKRAGE.py".format(branch)).text
-            if 'python3' in r:
-                return True
-        except Exception:
-            return False
-
-    def set_migration_text(self):
-        url = "https://forums.sickrage.ca/t/how-to-migrate-sickrage-to-python-3/1365"
-        msg = _("SiCKRAGE Python 3 release is now out! &mdash; <a href=\"{}\">Migrate Now</a>").format(url)
-        sickrage.app.newest_version_string = msg
 
 
 class GitUpdateManager(UpdateManager):
@@ -558,14 +542,10 @@ class GitUpdateManager(UpdateManager):
 
     def checkout_branch(self, branch):
         if branch in self.remote_branches:
-            if self.is_migration_ready(branch):
-                self.set_migration_text()
-                return False
-
-            if not self.install_requirements(branch):
-                return False
-
             sickrage.app.log.debug("Branch checkout: " + self._find_installed_version() + "->" + branch)
+
+            if not self.install_requirements(self.current_branch):
+                return False
 
             # remove untracked files and performs a hard reset on git branch to avoid update issues
             if sickrage.app.config.git_reset:
@@ -736,7 +716,7 @@ class PipUpdateManager(UpdateManager):
         return 'master'
 
     def _find_installed_version(self):
-        out, __, exit_status = self._pip2_cmd(self._pip2_path, 'show sickrage')
+        out, __, exit_status = self._pip_cmd(self._pip_path, 'show sickrage')
         if exit_status == 0:
             return out.split('\n')[1].split()[1]
         return ""
@@ -779,7 +759,7 @@ class PipUpdateManager(UpdateManager):
         """
         Performs pip upgrade
         """
-        __, __, exit_status = self._pip2_cmd(self._pip2_path, 'install -U --no-cache-dir sickrage')
+        __, __, exit_status = self._pip_cmd(self._pip_path, 'install -U --no-cache-dir sickrage')
         if exit_status == 0:
             sickrage.app.log.info("Updating SiCKRAGE from PyPi servers")
             sickrage.app.alerts.message(_('Updater'), _('Updating SiCKRAGE from PyPi servers'))

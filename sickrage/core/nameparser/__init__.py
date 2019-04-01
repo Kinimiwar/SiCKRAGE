@@ -1,22 +1,21 @@
 # Author: echel0n <echel0n@sickrage.ca>
 # URL: https://sickrage.ca
 #
-# This file is part of SickRage.
+# This file is part of SiCKRAGE.
 #
-# SickRage is free software: you can redistribute it and/or modify
+# SiCKRAGE is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 #
-# SickRage is distributed in the hope that it will be useful,
+# SiCKRAGE is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with SickRage.  If not, see <http://www.gnu.org/licenses/>.
+# along with SiCKRAGE.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import unicode_literals
 
 import os
 import re
@@ -25,12 +24,13 @@ from collections import OrderedDict
 from threading import Lock
 
 from dateutil import parser
+from sqlalchemy import orm
 
 import sickrage
 from sickrage.core.common import Quality
+from sickrage.core.databases.main import MainDB
 from sickrage.core.exceptions import MultipleShowObjectsException
-from sickrage.core.helpers import findCertainShow, remove_extension, search_showlist_by_name
-from sickrage.core.helpers.encoding import strip_accents
+from sickrage.core.helpers import findCertainShow, remove_extension, search_showlist_by_name, strip_accents
 from sickrage.core.nameparser import regexes
 from sickrage.core.scene_exceptions import get_scene_exception_by_name
 from sickrage.core.scene_numbering import get_absolute_number_from_season_and_episode, get_indexer_absolute_numbering, \
@@ -193,7 +193,7 @@ class NameParser(object):
             if 'ep_num' in named_groups:
                 ep_num = self._convert_number(match.group('ep_num'))
                 if 'extra_ep_num' in named_groups and match.group('extra_ep_num'):
-                    tmp_episodes = range(ep_num, self._convert_number(match.group('extra_ep_num')) + 1)
+                    tmp_episodes = list(range(ep_num, self._convert_number(match.group('extra_ep_num')) + 1))
                     # if len(tmp_episodes) > 6:
                     #     continue
                 else:
@@ -207,8 +207,8 @@ class NameParser(object):
                 result.score += 1
 
                 if 'extra_ab_ep_num' in named_groups and match.group('extra_ab_ep_num'):
-                    result.ab_episode_numbers = range(ep_ab_num,
-                                                      self._convert_number(match.group('extra_ab_ep_num')) + 1)
+                    result.ab_episode_numbers = list(range(ep_ab_num,
+                                                           self._convert_number(match.group('extra_ab_ep_num')) + 1))
                     result.score += 1
                 else:
                     result.ab_episode_numbers = [ep_ab_num]
@@ -273,7 +273,7 @@ class NameParser(object):
                 return bestResult
 
             # get quality
-            bestResult.quality = Quality.nameQuality(name, bestResult.show.is_anime)
+            bestResult.quality = Quality.name_quality(name, bestResult.show.is_anime)
 
             new_episode_numbers = []
             new_season_numbers = []
@@ -283,15 +283,14 @@ class NameParser(object):
             if bestResult.is_air_by_date:
                 airdate = bestResult.air_date.toordinal()
 
-                dbData = [x for x in sickrage.app.main_db.get_many('tv_episodes', bestResult.show.indexerid)
-                          if x['indexer'] == bestResult.show.indexer and x['airdate'] == airdate]
-
-                season_number = None
-                episode_numbers = []
-
-                if dbData:
-                    season_number = int(dbData[0]['season'])
-                    episode_numbers = [int(dbData[0]['episode'])]
+                try:
+                    dbData = MainDB.TVEpisode.query(showid=bestResult.show.indexerid, indexer=bestResult.show.indexer,
+                                                    airdate=airdate).one()
+                    season_number = int(dbData.season)
+                    episode_numbers = [int(dbData.episode)]
+                except orm.exc.NoResultFound:
+                    season_number = None
+                    episode_numbers = []
 
                 if not season_number or not episode_numbers:
                     try:
@@ -563,6 +562,7 @@ class ParseResult(object):
 
     def __eq__(self, other):
         return other and all([
+            self.__class__ == other.__class__,
             self.series_name == other.series_name,
             self.season_number == other.season_number,
             self.episode_numbers == other.episode_numbers,
@@ -576,7 +576,7 @@ class ParseResult(object):
             self.version == other.version
         ])
 
-    def __unicode__(self):
+    def __str__(self):
         to_return = ""
         if self.series_name is not None:
             to_return += 'SHOW:[{}]'.format(self.series_name)
@@ -598,9 +598,6 @@ class ParseResult(object):
         to_return += ' REGEX:[{}]'.format(' '.join(self.which_regex))
 
         return to_return
-
-    def __str__(self):
-        return self.__unicode__().encode('utf-8', errors='replace')
 
     @property
     def is_air_by_date(self):

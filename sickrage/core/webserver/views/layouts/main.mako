@@ -5,7 +5,7 @@
     from time import time
 
     import sickrage
-    from sickrage.core import API
+    from sickrage.core.api import API
     from sickrage.core.helpers import pretty_filesize, memory_usage
 %>
 
@@ -271,7 +271,7 @@
                                 </span>
                                 <span class="d-sm-none d-md-block">
                                     <img class="rounded-circle shadow"
-                                         src="https://gravatar.com/avatar/${md5(current_user['email']).hexdigest()}?d=mm&s=40"/>
+                                         src="https://gravatar.com/avatar/${md5(current_user['email'].encode('utf-8')).hexdigest()}?d=mm&s=40"/>
                                     ${toolsBadge}
                                 </span>
                             </a>

@@ -1,25 +1,25 @@
 # Author: Nick Sologoub
 # URL: https://sickrage.ca
 #
-# This file is part of SickRage.
+# This file is part of SiCKRAGE.
 #
-# SickRage is free software: you can redistribute it and/or modify
+# SiCKRAGE is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 #
-# SickRage is distributed in the hope that it will be useful,
+# SiCKRAGE is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with SickRage.  If not, see <http://www.gnu.org/licenses/>.
+# along with SiCKRAGE.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import unicode_literals
+
 
 import re
-import urllib
+from urllib import parse
 
 from requests.utils import dict_from_cookiejar
 
@@ -93,7 +93,7 @@ class PretomeProvider(TorrentProvider):
                 if mode != 'RSS':
                     sickrage.app.log.debug("Search string: %s " % search_string)
 
-                searchURL = self.urls['search'] % (urllib.quote(search_string.encode('utf-8')), self.categories)
+                searchURL = self.urls['search'] % (parse.quote(search_string.encode('utf-8')), self.categories)
 
                 try:
                     data = self.session.get(searchURL).text
@@ -135,7 +135,7 @@ class PretomeProvider(TorrentProvider):
                 torrent_id = link['href'].replace('details.php?id=', '')
 
                 try:
-                    if link.has_key('title'):
+                    if 'title' in link:
                         title = link['title']
                     else:
                         title = link.contents[0]

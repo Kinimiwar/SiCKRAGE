@@ -1,21 +1,21 @@
 # URL: https://sickrage.ca
 #
-# This file is part of SickRage.
+# This file is part of SiCKRAGE.
 #
-# SickRage is free software: you can redistribute it and/or modify
+# SiCKRAGE is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 #
-# SickRage is distributed in the hope that it will be useful,
+# SiCKRAGE is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with SickRage.  If not, see <http://www.gnu.org/licenses/>.
+# along with SiCKRAGE.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import unicode_literals
+
 
 import datetime
 from xml.etree.ElementTree import Element, ElementTree, SubElement
@@ -164,7 +164,7 @@ class KODI_12PlusMetadata(GenericMetadata):
             indexerid = SubElement(tv_node, "id")
             indexerid.text = str(myShow["id"])
 
-        if getattr(myShow, 'genre', None) and isinstance(myShow["genre"], basestring):
+        if getattr(myShow, 'genre', None) and isinstance(myShow["genre"], str):
             genre = SubElement(tv_node, "genre")
             genre.text = " / ".join(x.strip() for x in myShow["genre"].split('|') if x.strip())
 
@@ -316,7 +316,7 @@ class KODI_12PlusMetadata(GenericMetadata):
                 rating = SubElement(episode, "rating")
                 rating.text = myEp['rating']
 
-            if getattr(myEp, 'gueststars', None) and isinstance(myEp['gueststars'], basestring):
+            if getattr(myEp, 'gueststars', None) and isinstance(myEp['gueststars'], str):
                 for actor in (x.strip() for x in myEp['gueststars'].split('|') if x.strip()):
                     cur_actor = SubElement(episode, "actor")
                     cur_actor_name = SubElement(cur_actor, "name")

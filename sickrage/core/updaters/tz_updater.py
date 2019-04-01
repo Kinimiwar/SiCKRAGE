@@ -2,32 +2,33 @@
 # URL: https://sickrage.ca
 # Git: https://git.sickrage.ca/SiCKRAGE/sickrage.git
 #
-# This file is part of SickRage.
+# This file is part of SiCKRAGE.
 #
-# SickRage is free software: you can redistribute it and/or modify
+# SiCKRAGE is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 #
-# SickRage is distributed in the hope that it will be useful,
+# SiCKRAGE is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with SickRage.  If not, see <http://www.gnu.org/licenses/>.
+# along with SiCKRAGE.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import unicode_literals
+
 
 import re
 import threading
 from datetime import datetime
 
 from dateutil import tz
+from sqlalchemy import orm
 
 import sickrage
+from sickrage.core.databases.cache import CacheDB
 from sickrage.core.helpers import try_int
-from sickrage.core.helpers.encoding import ss
 from sickrage.core.websession import WebSession
 
 
@@ -63,21 +64,21 @@ class TimeZoneUpdater(object):
         except (IOError, OSError):
             pass
 
-        for x in sickrage.app.cache_db.all('network_timezones'):
-            if x['network_name'] not in network_timezones:
-                sickrage.app.cache_db.delete(x)
+        for x in CacheDB.NetworkTimezone.query():
+            if x.network_name not in network_timezones:
+                CacheDB.NetworkTimezone.delete(x)
 
         for network, timezone in network_timezones.items():
-            dbData = sickrage.app.cache_db.get('network_timezones', network)
-            if not dbData:
-                sickrage.app.cache_db.insert({
-                    '_t': 'network_timezones',
-                    'network_name': ss(network),
+            try:
+                dbData = CacheDB.NetworkTimezone.query(network_name=network).one()
+                if dbData.timezone != timezone:
+                    dbData.timezone = timezone
+                    CacheDB.NetworkTimezone.update(**dbData.as_dict())
+            except orm.exc.NoResultFound:
+                CacheDB.NetworkTimezone.add(**{
+                    'network_name': network,
                     'timezone': timezone
                 })
-            elif dbData['timezone'] != timezone:
-                dbData['timezone'] = timezone
-                sickrage.app.cache_db.update(dbData)
 
         # cleanup
         del network_timezones
@@ -94,7 +95,7 @@ class TimeZoneUpdater(object):
             return sickrage.app.tz
 
         try:
-            return tz.gettz(sickrage.app.cache_db.get('network_timezones', network)['timezone'])
+            return tz.gettz(CacheDB.NetworkTimezone.query(network_name=network).one().timezone)
         except Exception:
             return sickrage.app.tz
 

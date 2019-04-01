@@ -1,22 +1,22 @@
 # Author: echel0n <echel0n@sickrage.ca>
 # URL: https://sickrage.ca
 #
-# This file is part of SickRage.
+# This file is part of SiCKRAGE.
 #
-# SickRage is free software: you can redistribute it and/or modify
+# SiCKRAGE is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 #
-# SickRage is distributed in the hope that it will be useful,
+# SiCKRAGE is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with SickRage.  If not, see <http://www.gnu.org/licenses/>.
+# along with SiCKRAGE.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import unicode_literals
+
 
 import json
 import os
@@ -39,7 +39,7 @@ class LeafItem(Immutable):
 
     @classmethod
     def from_dict(cls, resource):
-        return cls(**dict([(str(k), v) for k, v in resource.iteritems()]))
+        return cls(**dict([(str(k), v) for k, v in resource.items()]))
 
     @classmethod
     def extract(cls, resource):
@@ -65,12 +65,11 @@ class ResourceItem(Immutable):
 
     @classmethod
     def get(cls, id):
-        map = cls.request_cls(
+        return cls.from_dict(cls.request_cls(
             apikey=os.environ.get('FANART_APIKEY'),
             id=id,
             ws=cls.WS
-        ).response()
-        return cls.from_dict(map)
+        ).response())
 
     def json(self, **kw):
         return json.dumps(
@@ -87,4 +86,4 @@ class CollectableItem(Immutable):
 
     @classmethod
     def collection_from_dict(cls, map):
-        return [cls.from_dict(k, v) for k, v in map.iteritems()]
+        return [cls.from_dict(k, v) for k, v in map.items()]

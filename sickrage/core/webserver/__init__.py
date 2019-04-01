@@ -1,22 +1,22 @@
 # Author: echel0n <echel0n@sickrage.ca>
 # URL: https://sickrage.ca
 #
-# This file is part of SickRage.
+# This file is part of SiCKRAGE.
 #
-# SickRage is free software: you can redistribute it and/or modify
+# SiCKRAGE is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 #
-# SickRage is distributed in the hope that it will be useful,
+# SiCKRAGE is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with SickRage.  If not, see <http://www.gnu.org/licenses/>.
+# along with SiCKRAGE.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import unicode_literals
+
 
 import os
 import shutil
@@ -28,6 +28,7 @@ from tornado.httpserver import HTTPServer
 from tornado.web import Application, RedirectHandler, StaticFileHandler
 
 import sickrage
+from sickrage.core.databases.main import MainDB
 from sickrage.core.helpers import create_https_certificates
 from sickrage.core.webserver.api import ApiHandler
 from sickrage.core.webserver.routes import Route
@@ -191,7 +192,7 @@ class WebServer(object):
             sickrage.app.log.info(
                 "SiCKRAGE :: CONFIG:[{}] [v{}]".format(sickrage.app.config_file, sickrage.app.config.config_version))
             sickrage.app.log.info(
-                "SiCKRAGE :: DATABASE:[v{}]".format(sickrage.app.main_db.version))
+                "SiCKRAGE :: DATABASE:[v{}]".format(MainDB().version))
             sickrage.app.log.info(
                 "SiCKRAGE :: URL:[{}://{}:{}{}]".format(('http', 'https')[sickrage.app.config.enable_https],
                                                         sickrage.app.config.web_host, sickrage.app.config.web_port,

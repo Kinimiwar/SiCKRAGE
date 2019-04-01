@@ -1,27 +1,26 @@
 # Author: Daniel Heimans
 # URL: http://code.google.com/p/sickrage
 #
-# This file is part of SickRage.
+# This file is part of SiCKRAGE.
 #
-# SickRage is free software: you can redistribute it and/or modify
+# SiCKRAGE is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 #
-# SickRage is distributed in the hope that it will be useful,
+# SiCKRAGE is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with SickRage.  If not, see <http://www.gnu.org/licenses/>.
+# along with SiCKRAGE.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import unicode_literals
+
 
 import socket
 import time
-
-import jsonrpclib
+import xmlrpc.client
 
 import sickrage
 from sickrage.core import scene_exceptions
@@ -206,17 +205,17 @@ class BTNProvider(TorrentProvider):
         parsed_json = {}
 
         try:
-            api = jsonrpclib.Server(self.urls['api'])
+            api = xmlrpc.client.Server(self.urls['api'])
             parsed_json = api.getTorrents(self.api_key, params or {}, int(results_per_page), int(offset))
             time.sleep(5)
-        except jsonrpclib.jsonrpc.ProtocolError as e:
+        except xmlrpc.client.ProtocolError as e:
             if e.message[1] == 'Call Limit Exceeded':
                 sickrage.app.log.warning("You have exceeded the limit of 150 calls per hour.")
             elif e.message[1] == 'Invalid API Key':
                 sickrage.app.log.warning("Incorrect authentication credentials.")
             else:
                 sickrage.app.log.error(
-                    "JSON-RPC protocol error while accessing provider. Error: {}".format(e.message[1]))
+                    "JSON-RPC protocol error while accessing provider. Error: {}".format(e))
         except (socket.error, socket.timeout, ValueError) as e:
             sickrage.app.log.warning("Error while accessing provider. Error: {}".format(e))
 

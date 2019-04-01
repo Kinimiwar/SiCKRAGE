@@ -1,28 +1,31 @@
 # Author: echel0n <echel0n@sickrage.ca>
 # URL: https://sickrage.ca
 #
-# This file is part of SickRage.
+# This file is part of SiCKRAGE.
 #
-# SickRage is free software: you can redistribute it and/or modify
+# SiCKRAGE is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 #
-# SickRage is distributed in the hope that it will be useful,
+# SiCKRAGE is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with SickRage.  If not, see <http://www.gnu.org/licenses/>.
+# along with SiCKRAGE.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import unicode_literals
+
 
 import datetime
 import threading
 import time
 
+from sqlalchemy import orm
+
 import sickrage
+from sickrage.core.databases.cache import CacheDB
 from sickrage.core.exceptions import CantRefreshShowException, CantUpdateShowException
 from sickrage.core.ui import ProgressIndicators, QueueProgressIndicator
 from sickrage.indexers import IndexerApi
@@ -45,13 +48,12 @@ class ShowUpdater(object):
 
         update_timestamp = int(time.mktime(datetime.datetime.now().timetuple()))
 
-        dbData = sickrage.app.cache_db.get('lastUpdate', 'theTVDB')
-        if dbData:
-            last_update = int(dbData['time'])
-        else:
+        try:
+            dbData = CacheDB.LastUpdate.query(provider='theTVDB').one()
+            last_update = int(dbData.time)
+        except orm.exc.NoResultFound:
             last_update = update_timestamp
-            dbData = sickrage.app.cache_db.insert({
-                '_t': 'lastUpdate',
+            dbData = CacheDB.LastUpdate.add(**{
                 'provider': 'theTVDB',
                 'time': 0
             })
@@ -88,7 +90,7 @@ class ShowUpdater(object):
 
         ProgressIndicators.setIndicator('dailyShowUpdates', QueueProgressIndicator("Daily Show Updates", pi_list))
 
-        dbData['time'] = update_timestamp
-        sickrage.app.cache_db.update(dbData)
+        dbData.time = update_timestamp
+        CacheDB.LastUpdate.update(**dbData.as_dict())
 
         self.amActive = False

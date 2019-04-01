@@ -1,22 +1,22 @@
 # Author: echel0n <echel0n@sickrage.ca>
 # URL: https://sickrage.ca
 #
-# This file is part of SickRage.
+# This file is part of SiCKRAGE.
 #
-# SickRage is free software: you can redistribute it and/or modify
+# SiCKRAGE is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 #
-# SickRage is distributed in the hope that it will be useful,
+# SiCKRAGE is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with SickRage.  If not, see <http://www.gnu.org/licenses/>.
+# along with SiCKRAGE.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import print_function, unicode_literals
+
 
 import sickrage
 from sickrage.core.common import Quality, SNATCHED, SNATCHED_PROPER, SNATCHED_BEST
@@ -79,7 +79,7 @@ class FailedProcessor(object):
         for episode in parsed.episode_numbers:
             segment = parsed.show.get_episode(parsed.season_number, episode)
 
-            curStatus, curQuality = Quality.splitCompositeStatus(segment.status)
+            curStatus, curQuality = Quality.split_composite_status(segment.status)
             if curStatus not in {SNATCHED, SNATCHED_BEST, SNATCHED_PROPER}:
                 continue
 

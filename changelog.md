@@ -1,17 +1,6 @@
 # Changelog
 
-- * 9d0fc85 - 2019-03-09: Release v9.4.83 
-- * 471976b - 2019-03-09: Fixed issues with source updates. 
-- * ee7439e - 2019-03-06: Release v9.4.82 
-- * 8a67674 - 2019-03-06: Release v9.4.81 
-- * 6de5fa5 - 2019-03-05: Release v9.4.80 
-- * 43baedf - 2019-03-05: Fixed saving of provider settings so that booleans are saved as integers 
-- * 4f0d739 - 2019-03-04: Release v9.4.79 
-- * 1ff280d - 2019-03-04: Added code for database restore function to check if db exists then destroy before creating new 
-- * 74f6d46 - 2019-03-04: Release v9.4.78 
-- * 3c0d05a - 2019-03-04: Source updates now download and unpack to main program folder to resolve update issues. 
-- * 3151280 - 2019-03-04: Cleaned up backup and restore functions for database. Bumped keycloak requirement to v0.2.2 
-- * fe70b17 - 2019-03-03: Added backup and restore functions to database class. Refactored backup and restore system for app to accommodate for migration to python 3. 
+- * 3bad5d0 - 2019-02-25: Migration from Python 2 to Python 3.7.x 
 - * a72ca25 - 2019-02-24: Release v9.4.77 
 - * b09d78a - 2019-02-24: Added Anime regex for Erai-raws 
 - * e0f2db6 - 2019-02-24: Release v9.4.76 

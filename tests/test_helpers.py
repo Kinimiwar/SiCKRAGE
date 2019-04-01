@@ -1,23 +1,23 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 # Author: echel0n <echel0n@sickrage.ca>
 # URL: https://sickrage.ca
 #
-# This file is part of SickRage.
+# This file is part of SiCKRAGE.
 #
-# SickRage is free software: you can redistribute it and/or modify
+# SiCKRAGE is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 #
-# SickRage is distributed in the hope that it will be useful,
+# SiCKRAGE is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with SickRage.  If not, see <http://www.gnu.org/licenses/>.
+# along with SiCKRAGE.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import unicode_literals
+
 
 import unittest
 
@@ -83,9 +83,9 @@ for name, test_data in test_cases.items():
     setattr(HelpersTests, 'test_%s' % name, test_generator(test_data))
 
 if __name__ == '__main__':
-    print "=================="
-    print "STARTING - Helpers TESTS"
-    print "=================="
-    print "######################################################################"
+    print("==================")
+    print("STARTING - Helpers TESTS")
+    print("==================")
+    print("######################################################################")
 
     unittest.main()

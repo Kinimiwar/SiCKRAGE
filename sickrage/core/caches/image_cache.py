@@ -2,30 +2,28 @@
 # URL: https://sickrage.ca
 # Git: https://git.sickrage.ca/SiCKRAGE/sickrage.git
 #
-# This file is part of SickRage.
+# This file is part of SiCKRAGE.
 #
-# SickRage is free software: you can redistribute it and/or modify
+# SiCKRAGE is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 #
-# SickRage is distributed in the hope that it will be useful,
+# SiCKRAGE is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with SickRage.  If not, see <http://www.gnu.org/licenses/>.
+# along with SiCKRAGE.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import unicode_literals
 
-import io
 import os
 
-from hachoir_core import config as hachoir_config
-from hachoir_core.stream import StringInputStream
-from hachoir_metadata import extractMetadata
-from hachoir_parser import guessParser
+from hachoir.core import config as hachoir_config
+from hachoir.metadata import extractMetadata
+from hachoir.parser import guessParser
+from hachoir.stream import StringInputStream
 
 import sickrage
 from sickrage.core.helpers import copy_file
@@ -80,7 +78,6 @@ class ImageCache(object):
         """
         fanart_file_name = str(indexer_id) + '.fanart.jpg'
         return os.path.join(self._cache_dir(), fanart_file_name)
-
 
     def fanart_thumb_path(self, indexer_id):
         """
@@ -171,7 +168,7 @@ class ImageCache(object):
             sickrage.app.log.warning("Couldn't check the type of " + str(path) + " cause it doesn't exist")
             return None
 
-        with io.open(path, 'rb') as fh:
+        with open(path, 'rb') as fh:
             img_metadata = extractMetadata(guessParser(StringInputStream(fh.read())))
             if not img_metadata:
                 sickrage.app.log.debug(
@@ -307,7 +304,7 @@ class ImageCache(object):
                         if cur_file_type is None:
                             sickrage.app.log.warning(
                                 "Unable to retrieve image type {}, not using the image from {}".format(
-                                    unicode(cur_file_type), cur_file_name))
+                                    str(cur_file_type), cur_file_name))
                             continue
 
                         sickrage.app.log.debug("Checking if image " + cur_file_name + " (type " + str(

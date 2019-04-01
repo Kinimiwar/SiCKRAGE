@@ -1,22 +1,21 @@
 # Author: echel0n <echel0n@sickrage.ca>
 # URL: https://sickrage.ca
 #
-# This file is part of SickRage.
+# This file is part of SiCKRAGE.
 #
-# SickRage is free software: you can redistribute it and/or modify
+# SiCKRAGE is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 #
-# SickRage is distributed in the hope that it will be useful,
+# SiCKRAGE is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with SickRage.  If not, see <http://www.gnu.org/licenses/>.
+# along with SiCKRAGE.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import unicode_literals
 
 import datetime
 import os
@@ -26,11 +25,10 @@ import shutil
 import socket
 import sys
 import threading
-import time
 import traceback
-import urllib
-import urlparse
 import uuid
+from urllib.parse import uses_netloc
+from urllib.request import FancyURLopener
 
 from apscheduler.schedulers.tornado import TornadoScheduler
 from apscheduler.triggers.interval import IntervalTrigger
@@ -40,16 +38,12 @@ from keycloak.realm import KeycloakRealm
 from tornado.ioloop import IOLoop
 
 import sickrage
-from sickrage.core.api import API
 from sickrage.core.caches.name_cache import NameCache
 from sickrage.core.caches.quicksearch_cache import QuicksearchCache
 from sickrage.core.common import SD, SKIPPED, WANTED
 from sickrage.core.config import Config
-from sickrage.core.databases.cache import CacheDB
-from sickrage.core.databases.main import MainDB
 from sickrage.core.helpers import findCertainShow, generate_secret, makeDir, get_lan_ip, restoreSR, \
-    getDiskSpaceUsage, getFreeSpace, launch_browser, torrent_webui_url, move_file
-from sickrage.core.helpers.encoding import get_sys_encoding, ek, patch_modules
+    getDiskSpaceUsage, getFreeSpace, launch_browser, torrent_webui_url, encryption
 from sickrage.core.logger import Logger
 from sickrage.core.nameparser.validator import check_force_season_folders
 from sickrage.core.processors import auto_postprocessor
@@ -90,6 +84,7 @@ class Core(object):
         except Exception:
             self.tz = tz.tzlocal()
 
+        self.private_key = None
         self.config_file = None
         self.data_dir = None
         self.cache_dir = None
@@ -120,7 +115,6 @@ class Core(object):
 
         self.user_agent = 'SiCKRAGE.CE.1/({};{};{})'.format(platform.system(), platform.release(), str(uuid.uuid1()))
         self.languages = [language for language in os.listdir(sickrage.LOCALE_DIR) if '_' in language]
-        self.sys_encoding = get_sys_encoding()
         self.client_web_urls = {'torrent': '', 'newznab': ''}
 
         self.adba_connection = None
@@ -130,8 +124,6 @@ class Core(object):
         self.log = None
         self.config = None
         self.alerts = None
-        self.main_db = None
-        self.cache_db = None
         self.scheduler = None
         self.wserver = None
         self.google_auth = None
@@ -162,7 +154,7 @@ class Core(object):
         threading.currentThread().setName('CORE')
 
         # patch modules with encoding kludge
-        patch_modules()
+        # patch_modules()
 
         # init core classes
         self.notifier_providers = NotifierProviders()
@@ -171,8 +163,6 @@ class Core(object):
         self.log = Logger()
         self.config = Config()
         self.alerts = Notifications()
-        self.main_db = MainDB()
-        self.cache_db = CacheDB()
         self.scheduler = TornadoScheduler()
         self.wserver = WebServer()
         self.name_cache = NameCache()
@@ -202,7 +192,7 @@ class Core(object):
         # Check if we need to perform a restore first
         if os.path.exists(os.path.abspath(os.path.join(self.data_dir, 'restore'))):
             success = restoreSR(os.path.abspath(os.path.join(self.data_dir, 'restore')), self.data_dir)
-            self.log.info("Restoring SiCKRAGE backup: {}!".format(("FAILED", "SUCCESSFUL")[success]))
+            print("Restoring SiCKRAGE backup: %s!\n" % ("FAILED", "SUCCESSFUL")[success])
             if success:
                 shutil.rmtree(os.path.abspath(os.path.join(self.data_dir, 'restore')), ignore_errors=True)
 
@@ -217,6 +207,12 @@ class Core(object):
 
             helpers.move_file(os.path.abspath(os.path.join(self.data_dir, 'sickbeard.db')),
                               os.path.abspath(os.path.join(self.data_dir, 'sickrage.db')))
+
+        # init private key
+        self.private_key = encryption.load_key()
+        if not self.private_key:
+            self.private_key = encryption.generate_key()
+            encryption.save_key(self.private_key)
 
         # load config
         self.config.load()
@@ -241,8 +237,8 @@ class Core(object):
         if self.config.random_user_agent:
             self.user_agent = UserAgent().random
 
-        urlparse.uses_netloc.append('scgi')
-        urllib.FancyURLopener.version = self.user_agent
+        uses_netloc.append('scgi')
+        FancyURLopener.version = self.user_agent
 
         # set torrent client web url
         torrent_webui_url(True)
@@ -258,26 +254,14 @@ class Core(object):
             self.log.error('Failed getting disk space: %s', traceback.format_exc())
 
         # perform database startup actions
-        for db in [self.main_db, self.cache_db]:
-            # initialize database
-            db.initialize()
-
-            # check integrity of database
-            db.check_integrity()
-
+        from sickrage.core.databases.main import MainDB
+        from sickrage.core.databases.cache import CacheDB
+        for db in [MainDB(), CacheDB()]:
             # migrate database
             db.migrate()
 
-            # misc database cleanups
-            db.cleanup()
-
             # upgrade database
             db.upgrade()
-
-        # compact main database
-        if self.config.last_db_compact < time.time() - 604800:  # 7 days
-            self.main_db.compact()
-            self.config.last_db_compact = int(time.time())
 
         # load name cache
         self.name_cache.load()
@@ -540,12 +524,6 @@ class Core(object):
             # save all show and config settings
             self.save_all()
 
-            # close databases
-            for db in [self.main_db, self.cache_db]:
-                if db.opened:
-                    self.log.debug("Shutting down {} database connection".format(db.name))
-                    db.close()
-
             # shutdown logging
             if self.log:
                 self.log.close()
@@ -580,8 +558,9 @@ class Core(object):
 
         self.quicksearch_cache.load()
 
-        for dbData in self.main_db.all('tv_shows'):
-            show = TVShow(int(dbData['indexer']), int(dbData['indexer_id']))
+        from sickrage.core.databases.main import MainDB
+        for dbData in MainDB.TVShow.query():
+            show = TVShow(int(dbData.indexer), int(dbData.indexer_id))
 
             try:
                 self.log.debug("Loading data for show: [{}]".format(show.name))

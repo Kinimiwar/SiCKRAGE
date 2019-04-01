@@ -1,35 +1,31 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 # Author: echel0n <echel0n@sickrage.ca>
 # URL: https://sickrage.ca
 #
-# This file is part of SickRage.
+# This file is part of SiCKRAGE.
 #
-# SickRage is free software: you can redistribute it and/or modify
+# SiCKRAGE is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 #
-# SickRage is distributed in the hope that it will be useful,
+# SiCKRAGE is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with SickRage.  If not, see <http://www.gnu.org/licenses/>.
+# along with SiCKRAGE.  If not, see <http://www.gnu.org/licenses/>.
 
 from __future__ import print_function
-from __future__ import unicode_literals
 
 import os.path
 import unittest
 from datetime import date
 
-import sickrage
 import tests
 from sickrage.core.nameparser import ParseResult, NameParser, InvalidNameException, InvalidShowException
 from sickrage.core.tv.show import TVShow
-
-sickrage.app.sys_encoding = 'UTF-8'
 
 DEBUG = VERBOSE = False
 
@@ -266,8 +262,10 @@ class ComboTests(tests.SiCKRAGETestDBCase):
             print(result, which_regexes)
 
         self.assertEqual(test_result, result)
+
         for cur_regex in which_regexes:
             self.assertTrue(cur_regex in test_result.which_regex)
+
         self.assertEqual(len(which_regexes), len(test_result.which_regex))
 
     def test_combos(self):
@@ -323,7 +321,9 @@ class AnimeTests(tests.SiCKRAGETestDBCase):
 
             self.assertEqual(test_result.which_regex, {section},
                              '{} : {} != {}'.format(cur_test, test_result.which_regex, {section}))
-            self.assertEqual(test_result, result, '{} : {} != {}'.format(cur_test, test_result, result))
+
+            self.assertEqual(test_result, result,
+                             '{} : {} != {}'.format(cur_test, test_result, result))
 
     def test_anime_sxxexx_file_names(self):
         """

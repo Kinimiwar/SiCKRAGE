@@ -1,22 +1,22 @@
 # Author: echel0n <echel0n@sickrage.ca>
 # URL: https://sickrage.ca
 #
-# This file is part of SickRage.
+# This file is part of SiCKRAGE.
 #
-# SickRage is free software: you can redistribute it and/or modify
+# SiCKRAGE is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 #
-# SickRage is distributed in the hope that it will be useful,
+# SiCKRAGE is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with SickRage.  If not, see <http://www.gnu.org/licenses/>.
+# along with SiCKRAGE.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import unicode_literals
+
 
 import socket
 
@@ -86,7 +86,7 @@ class GrowlNotifier(Notifiers):
         return False
 
     def _send(self, host, port, data, debug=False):
-        if debug: print '<Sending>\n', data, '\n</Sending>'
+        if debug: print('<Sending>\n', data, '\n</Sending>')
 
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((host, port))
@@ -94,7 +94,7 @@ class GrowlNotifier(Notifiers):
         response = gntp.core.parse_gntp(s.recv(1024))
         s.close()
 
-        if debug: print '<Recieved>\n', response, '\n</Recieved>'
+        if debug: print('<Recieved>\n', response, '\n</Recieved>')
 
         return response
 
